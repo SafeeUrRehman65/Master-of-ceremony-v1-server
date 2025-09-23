@@ -19,7 +19,6 @@ from langchain_community.document_loaders import PyPDFLoader
 from pydantic import BaseModel, Field
 from typing_extensions import TypedDict
 from langgraph.graph import StateGraph, START, END
-from IPython.display import Image, display
 from langgraph.types import Command
 from context.texts import ceremony_script
 from classes.transcriptionClient import TranscriptionClient
