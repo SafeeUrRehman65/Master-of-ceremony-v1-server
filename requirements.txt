@@ -41,3 +41,4 @@ urllib3
 uvicorn
 websocket-client
 websockets
+textstat
