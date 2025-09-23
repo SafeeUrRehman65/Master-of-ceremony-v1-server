@@ -11,7 +11,7 @@ from typing import List
 from langchain.output_parsers import PydanticOutputParser
 from fastapi import FastAPI, WebSocket, WebSocketException
 from context.boe_agenda import boe_agenda_script
-from .helperFunctions import text_to_speech, receive_from_websocket
+from helperFunctions import text_to_speech, receive_from_websocket
 from langchain_core.prompts import format_document
 from errorHandler import node_error_handler 
 import logging
@@ -23,13 +23,13 @@ from IPython.display import Image, display
 from langgraph.types import Command
 from context.texts import ceremony_script
 from classes.transcriptionClient import TranscriptionClient
-from .prompts import ceremony_initiater_prompt, script_output_prompt, speaker_introduction_prompt, speaker_remark_prompt, ceremony_end_prompt, script_extraction_prompt
+from prompts import ceremony_initiater_prompt, script_output_prompt, speaker_introduction_prompt, speaker_remark_prompt, ceremony_end_prompt, script_extraction_prompt
 from textstat import textstat
 from dotenv import load_dotenv
 from langchain.prompts import ChatPromptTemplate
 from langchain_fireworks import ChatFireworks
-from .schemas import script_json_schema
-from .schemas import Script, State, Remarks, script_json_schema
+from schemas import script_json_schema
+from schemas import Script, State, Remarks, script_json_schema
 
 load_dotenv()
 llm = ChatFireworks(
