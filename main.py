@@ -9,7 +9,7 @@ from asyncio import Queue as AsyncQueue
 import time
 from typing import List
 from langchain.output_parsers import PydanticOutputParser
-from fastapi import FastAPI, WebSocket, WebSocketException
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, WebSocketException
 from context.boe_agenda import boe_agenda_script
 from helperFunctions import text_to_speech, receive_from_websocket
 from langchain_core.prompts import format_document
@@ -433,6 +433,10 @@ async def websocket_endpoint(websocket: WebSocket):
         }))
 
         await agent_task
+
+    except WebSocketDisconnect:
+        logger.warning("🛑 WebSocket disconnected by client (tab closed, reloaded, etc).")
+        
     except asyncio.CancelledError:
         logger.info("Agent task was cancelled")
     
