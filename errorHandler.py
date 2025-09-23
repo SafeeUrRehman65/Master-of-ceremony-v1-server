@@ -3,7 +3,6 @@ import logging
 from fastapi import WebSocketException
 import asyncio
 import json
-from langchain_core.load.serializable import try_neq_default
 
 logger = logging.getLogger(__name__)
 
