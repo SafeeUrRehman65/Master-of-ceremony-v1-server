@@ -1,3 +1,4 @@
+import asyncio
 import io
 import os
 from socket import timeout
@@ -22,13 +23,14 @@ LANGUAGE = "en"
 class TranscriptionClient:
     """Handles real-time audio transcription via WebSocket streaming."""
 
-    def __init__(self, frontend_websocket):
+    def __init__(self, frontend_websocket, event_loop):
         self.state = {}
         self.segments = {}
         self.frontend_ws = frontend_websocket
         self.lock = threading.Lock()
         self.fireworks_ws = None
         self.audio_chunks = []
+        self.loop = event_loop
         self.stop_event = threading.Event()  # New stop event
         self.streaming_thread  = None
 
@@ -78,7 +80,18 @@ class TranscriptionClient:
 
                     self.segments =  {segment["id"]: segment["text"] for segment in data["segments"]}
                     self.state = ' '.join(self.segments.values())
-                    self.send_and_display_transcription()
+                    
+                    """Display the ongoing transcription state."""
+                    print("\n--- Current Transcription ---")
+                    print("transcription", self.state)
+                    # send the current state to frontend websocket
+                    data = {"type": "transcription", "transcription": self.state}
+                    
+                    asyncio.run_coroutine_threadsafe(
+                        self.frontend_ws.send_text(json.dumps(data)),
+                        self.loop           
+                    )
+                    print("----------------------------\n")
 
         except json.JSONDecodeError:
             print(f"Failed to parse message: {message}")
@@ -88,14 +101,6 @@ class TranscriptionClient:
         """Handle WebSocket errors."""
         print(f"WebSocket error: {error}")
 
-    def send_and_display_transcription(self):
-        """Display the ongoing transcription state."""
-        print("\n--- Current Transcription ---")
-        print(self.state)
-        # send the current state to frontend websocket
-        data = {"type": "transcription", "transcription": self.state}
-        self.frontend_ws.send_text(json.dumps(data))
-        print("----------------------------\n")
 
     def create_websocket_connection(self, queue):
         """Create and configure the WebSocket connection."""

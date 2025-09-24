@@ -10,7 +10,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect, WebSocketException
 from helperFunctions import  receive_from_websocket 
 import logging
 from master_of_ceremony import agent
-
+from errorHandler import send_error
 
 logger = logging.getLogger(__name__)
 
@@ -30,8 +30,10 @@ async def websocket_endpoint(websocket: WebSocket):
         await receive_from_websocket(websocket, audio_queue, text_queue, stop_event) 
     except WebSocketDisconnect as e:
         print(f"❌ WebSocket disconnected by client — Code={e.code}")
+        stop_event.set()
     except Exception as e:
-        print(f"some error occured while initiating receive {E}")
+        print(f"Some error occured while initiating receive {e}")
+        await send_error(websocket, "Websocket receive failed", e)
     
     else:
         print("✅ WebSocket handler completed cleanly")

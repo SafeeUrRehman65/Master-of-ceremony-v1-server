@@ -9,6 +9,7 @@ from murf import Murf
 import logging
 import asyncio
 from master_of_ceremony import agent
+from errorHandler import send_error
 
 
 load_dotenv()
@@ -46,26 +47,28 @@ async def receive_from_websocket(websocket: WebSocket, audio_queue: ThreadQueue,
                             if 'phase' in data:
 
                                 data_phase = data["phase"]
-                                print(data_phase)
                                 if data_phase == "initiate":
                                     asyncio.create_task(run_ceremony_agent(websocket, text_queue, audio_queue))
                                     
                             else:
                                 print("putting data in text queue!")
                                 await text_queue.put(data)
-                        except json.JSONDecodeError:
+                        except json.JSONDecodeError as e:
                             print(f"❌ Invalid JSON received: {message['text']}")
+                            await send_error(websocket, f"Invalid JSON received: {message['text']}",e)
                             continue
             
-            except WebSocketDisconnect:
+            except WebSocketDisconnect as e:
                 print("❌ WebSocketDisconnect raised - client disconnected.")
                 break
 
             except Exception as e:
                 print(f"Some error occured while receiving websocket messages: {e}")
+                await send_error(websocket, "Websocket receive failed", e)        
                 break
     except Exception as e:
         print(f"Websocket receive failed: {e}")
+        await send_error(websocket, "Websocket receive failed", e)
         stop_event.set()
 
 
@@ -90,19 +93,16 @@ async def run_ceremony_agent (websocket, text_queue, audio_queue):
             "phase": "prepare",
         })
 
-    except WebSocketDisconnect:
+    except WebSocketDisconnect as e:
         logger.warning("🛑 WebSocket disconnected by client (tab closed, reloaded, etc).")
-
-    except asyncio.CancelledError:
-        logger.info("Agent task was cancelled")
+        
+    except asyncio.CancelledError as e:
+        logger.info("Agent task was cancelled")    
+        await send_error(websocket, "Agent's task was cancelled", e)
+    
     
     except Exception as e:
         logger.error(f"Graph execution failed: {e}")
         
-        error_data = {
-            "type" :"error",
-            "message":"Ceremony interrupted due to technical issues",
-            "error": f"Error: {e}"
-        }
-        await websocket.send_text(json.dumps(error_data))
+        await send_error(websocket, "Ceremony interrupted due to technical issues", e)
     

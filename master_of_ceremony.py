@@ -56,6 +56,13 @@ logger = logging.getLogger(__name__)
 async def read_script(state: State):
     """Read the script and produce structured outputs"""
     
+    if current_state:
+        # update current state
+        current_state.update({
+        "message":" ", 
+        "phase": " "
+        })
+
     # prompt = ChatPromptTemplate.from_messages([
     #     ("system", script_output_prompt)
     # ]).partial(format_instructions = parser.get_format_instructions())
@@ -109,11 +116,14 @@ async def read_script(state: State):
 async def initiate_ceremony(state: State):
     """Initiate the ceremony"""
     
+    # update current state
+    current_state.update({
+    "message": 'Initiating Ceremony ...', 
+    "phase": "initiate"
+    })
+
     current_state["message"] = "Initiating Ceremony ..."
     await state["websocket"].send_text(json.dumps(current_state))
-
-    state["phase"] = "initiate"
-
 
     prompt = ChatPromptTemplate.from_messages([
         ("system", ceremony_initiater_prompt),
@@ -242,9 +252,17 @@ async def listen_to_speaker(state: State):
         
         await state["websocket"].send_text(json.dumps(current_state))
         # initiate a new transcription client
-        new_client = TranscriptionClient(state["websocket"])    
+        new_client = TranscriptionClient(state["websocket"], asyncio.get_running_loop())    
         # initiate a new client thread to stop prevent effect
         new_client_thread = threading.Thread(target=new_client.run, args=(state["audio_queue"],), daemon=True)
+
+
+        # send currently speaking speaker details to frontend
+        current_speaker_details = {**current_speaker_data, "type": "speaker_details",
+        "current_speaker_id": state["current_speaker_id"],
+        "total_speakers": len(state["speakers_names"])}
+        print("current_speaker_details", current_speaker_details)
+        await state["websocket"].send_text(json.dumps(current_speaker_details))
 
         try:
             while True:
@@ -259,14 +277,6 @@ async def listen_to_speaker(state: State):
                     "message": f"🎙️ Listening to Mr/Ms. {current_speaker_data['speaker_name']}'s speech"
                     })
                     
-
-                    # send currently speaking speaker details to frontend
-                    current_speaker_details = {**current_speaker_data, "type": "speaker_details",
-                    "current_speaker_id": state["current_speaker_id"],
-                    "total_speakers": len(state["speakers_names"])}
-
-                    state["websocket"].send_text(json.dumps(current_speaker_details))
-
                     print(f"🎤 Speaker {current_speaker_data['speaker_name']} has started the speech.")
                     continue
                     
@@ -278,6 +288,14 @@ async def listen_to_speaker(state: State):
                     new_client.close()
 
                     new_client_thread.join(timeout=5)
+
+
+                    # update current state
+                    current_state.update({
+                    "message": f'🎙️ Mr. {current_speaker_data["speaker_name"]}, has finished speaking, now giving remarks' , 
+                    "phase": "remarks"
+                    })
+
                     # speech ended, generate remarks
                     response = chain.invoke({"speaker_name": current_speaker_data["speaker_name"], "speaker_designation": current_speaker_data["designation"], "purpose_of_speech": current_speaker_data["purpose_of_speech"], "speech": speaker_speech_partial})
 
@@ -300,7 +318,7 @@ async def give_remarks(state: State):
 
     state["phase"] = "remarks"
     current_speaker = state["speakers_data"][state["current_speaker_id"]]
-    current_state["message"] = f'Giving remarks to speaker{current_speaker["speaker_name"]}...'
+    current_state["message"] = f'Giving remarks to speaker {current_speaker["speaker_name"]}...'
     await state["websocket"].send_text(json.dumps(current_state))
     speaker_remarks = state["current_speaker_remarks"]
     try:
