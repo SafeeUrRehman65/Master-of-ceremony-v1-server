@@ -39,13 +39,19 @@ async def receive_from_websocket(websocket: WebSocket, audio_queue: ThreadQueue,
                     if "bytes" in message:
                         audio_queue.put(message["bytes"])
                     elif "text" in message:
+
                         try:
                             data = json.loads(message["text"])
-                            data_phase = data["phase"]
-                            if data_phase == "initiate":
-                                asyncio.create_task(run_ceremony_agent(websocket, text_queue, audio_queue))
+                            print(data)
+                            if 'phase' in data:
+
+                                data_phase = data["phase"]
+                                print(data_phase)
+                                if data_phase == "initiate":
+                                    asyncio.create_task(run_ceremony_agent(websocket, text_queue, audio_queue))
                                     
                             else:
+                                print("putting data in text queue!")
                                 await text_queue.put(data)
                         except json.JSONDecodeError:
                             print(f"❌ Invalid JSON received: {message['text']}")

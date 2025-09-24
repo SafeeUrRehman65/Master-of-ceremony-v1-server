@@ -35,5 +35,4 @@ async def websocket_endpoint(websocket: WebSocket):
     
     else:
         print("✅ WebSocket handler completed cleanly")
-    finally:
-        stop_event.set()
+    
