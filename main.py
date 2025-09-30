@@ -35,6 +35,9 @@ async def websocket_endpoint(websocket: WebSocket):
         print(f"Some error occured while initiating receive {e}")
         await send_error(websocket, "Websocket receive failed", e)
     
-    else:
+    finally:
         print("✅ WebSocket handler completed cleanly")
+        # signal threads to stop
+        stop_event.set()
+        
     

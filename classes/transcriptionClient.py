@@ -2,6 +2,7 @@ import asyncio
 import io
 import os
 from socket import timeout
+import uuid
 import requests
 import json
 import threading
@@ -60,6 +61,7 @@ class TranscriptionClient:
             daemon=True
         )
         self.streaming_thread.start()
+
         
         
 
@@ -124,14 +126,34 @@ class TranscriptionClient:
 
         return websocket_client
 
-    def run(self, queue):
+    def clean_context(self):
+        if not self.fireworks_ws:
+            return
+        
+        cleanup_message = {
+            "event_id": str(uuid.uuid4()),
+            "object": "stt.state.clear",
+            "reset_id": str(uuid.uuid1())
+        }
+        self.fireworks_ws.send(json.dumps(cleanup_message), opcode=websocket.ABNF.OPCODE_TEXT)
+        
+    def run(self, queue, stop_event):
         """Main execution flow."""
         try:
             websocket_client = self.create_websocket_connection(queue)
-
             print("Connecting to transcription service...")
-            websocket_client.run_forever()
+            ws_thread = threading.Thread(target=websocket_client.run_forever,daemon=True
+            )
+            ws_thread.start()
 
+            while not stop_event.is_set():
+
+                time.sleep(0.5)
+
+            ws_thread.join(timeout=4)
+            websocket_client.close()
+            self.close()
+            
         except Exception as e:
             print(f"Error: {e}")
             return 1
@@ -146,11 +168,12 @@ class TranscriptionClient:
         if self.fireworks_ws:
             try:
                 self.fireworks_ws.close()
+                print("Closed fireworks connection")
             except Exception as e:
                 print(f'Error closing WebSocket: {e}')
         if self.streaming_thread:
             try:
-                self.streaming_thread.join()
+                self.streaming_thread.join(timeout=4)
             except Exception as e:
                 print(f"Error joining streaming thread: {e}")
         print("Transcription client closed.")

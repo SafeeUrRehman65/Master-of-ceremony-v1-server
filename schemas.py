@@ -4,7 +4,10 @@ import queue
 from queue import Queue as ThreadQueue
 from threading import Event
 from pydantic import BaseModel, Field
-from typing import Annotated, ClassVar, List, Literal, TypedDict
+from typing import Annotated, ClassVar, List, Literal, Optional, TypedDict
+
+from classes.transcriptionClient import TranscriptionClient
+from classes.TTSClient import TTS_Client
 
 
 # class SpeakerData(BaseModel):
@@ -39,6 +42,7 @@ class Remarks(BaseModel):
 class State(TypedDict):
     # this state class will hold important information about the ceremony needed for the MoC agent to work smoothly
     websocket: WebSocket
+    transcriptionClient: Optional[TranscriptionClient]
     event_name:str 
     theme:str
     venue:str
@@ -47,7 +51,7 @@ class State(TypedDict):
     current_speaker_id: int
     speakers_names: List
     current_speaker_remarks: str
-    ceremony_summary: str
+    ceremony_histoy: str
     speakers_data: List
     phase: Literal["prepare", "initiate","introduce", "listen", "speeches", "remarks", "end"]
 

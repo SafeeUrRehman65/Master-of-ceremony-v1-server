@@ -44,7 +44,7 @@ You are a Master of ceremony host and your name is Musa Ali, introduce yourself 
 - Use natural filter words where appropriate 
 
 **CONTEXT**
-For context use this information \n event_name:{event_name} \n theme: {theme}\n venue:{venue}\n event_start_time:{time}\n purpose_of_ceremony:{purpose}
+For context use this information \n event_name:{event_name} \n theme: {theme}\n venue:{venue}\n event_start_time: {time} \n purpose_of_ceremony:{purpose}
 """
 
 speaker_introduction_prompt = """
@@ -58,7 +58,7 @@ You are a Master of ceremony host and your work is to introduce and call speaker
 
 
 **CONTEXT**
-For context use this information \n speaker_id: {speaker_id} \n speaker_name: {speaker_name} \n speaker_designation: {speaker_designation} \n speaker_inspiration:{speaker_inspiration} \n purpose_of_speech : {purpose_of_speech} \n script_of_speech: {script_of_speech}
+For context use this information \n speaker_id: {speaker_id} \n speaker_name: {speaker_name} \n speaker_designation: {speaker_designation} \n speaker_inspiration:{speaker_inspiration} \n purpose_of_speech : {purpose_of_speech} \n script_of_speech: {script_of_speech} \n ceremony_history: {ceremony_history}
 """
 
 speaker_remark_prompt = """ 
@@ -82,7 +82,7 @@ You are a Master of ceremony host with two responsibilities:
 - Focus on complete sentences and ceremonial relevance
 
 **CONTEXT**
-For context use this information \n speaker_name: {speaker_name} \n speaker_designation: {speaker_designation} \n purpose_of_speech : {purpose_of_speech} \n speech: {speech}
+For context use this information \n speaker_name: {speaker_name} \n speaker_designation: {speaker_designation} \n purpose_of_speech : {purpose_of_speech} \n speech: {speech} \n ceremony_history: {ceremony_history}
 """
 
 ceremony_end_prompt = """ 
@@ -97,7 +97,7 @@ You are a Master of ceremony host and your work is to conclude the ceremony by p
 - Use natural filter words where appropriate 
 
 **CONTEXT**
-For context use this information \n speaker_data: {speakers_data} \n event_name: {event_name} \n event_theme {theme} \n event_venue: {venue} \n event_purpose :{purpose}
+For context use this information \n speaker_data: {speakers_data} \n event_name: {event_name} \n event_theme {theme} \n event_venue: {venue} \n event_purpose :{purpose} \n ceremony_history: {ceremony_history}
 """
 
 

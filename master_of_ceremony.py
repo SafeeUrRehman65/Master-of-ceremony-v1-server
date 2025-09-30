@@ -11,6 +11,7 @@ from langchain_community.document_loaders import PyPDFLoader
 from langgraph.graph import StateGraph, START, END
 from langgraph.types import Command
 from classes.transcriptionClient import TranscriptionClient
+from classes.TTSClient import TTS_Client
 from prompts import ceremony_initiater_prompt, script_output_prompt, speaker_introduction_prompt, speaker_remark_prompt, ceremony_end_prompt, script_extraction_prompt
 from textstat import textstat
 from dotenv import load_dotenv
@@ -24,6 +25,12 @@ llm = ChatFireworks(
     api_key = os.getenv("FIREWORKS_API_KEY"),
     temperature=0,
     model="accounts/fireworks/models/kimi-k2-instruct-0905",
+)
+
+ceremony_llm = ChatFireworks(
+    api_key = os.getenv("FIREWORKS_API_KEY"),
+    temperature=0,
+    model="accounts/fireworks/models/gpt-oss-120b",
 )
 
 # /fireworks/models/deepseek-v3p1
@@ -113,6 +120,51 @@ async def read_script(state: State):
 
 
 @node_error_handler
+async def create_websocket_connections(state: State):
+    """Initiate all the websocket connections"""
+
+    # update current state
+    current_state.update({
+    "message": 'Establishing connection with services ...', 
+    "phase": "prepare"
+    })
+
+    await state["websocket"].send_text(json.dumps(current_state))
+
+    if state.get("transcriptionClient"):
+        updates = {
+            "transcriptionClient": state["transcription_client"]
+        }
+        return updates
+    
+    try:
+
+        if not state.get("stop_event"):
+            raise ValueError("stop_event not found in state")
+
+        transcription_client = TranscriptionClient(state["websocket"], asyncio.get_running_loop())
+        print("made new transcription client")
+
+        updates = {
+            "transcriptionClient": transcription_client,
+        }
+
+        # initiate a new client thread to stop prevent effect
+        transcription_thread = threading.Thread(target=transcription_client.run, args=(state["audio_queue"],state["stop_event"],), daemon=True, name=f"transcription-{id(state['websocket'])}")
+
+        print("made new transcription client thread")
+
+        transcription_thread.start()
+        print("started new transcription client thread!")
+
+        # save thread ref if want to join later
+        transcription_client._thread = transcription_thread
+        return updates
+        
+    except Exception as e:
+        print(f"Some error occured while initializing services: {e}")
+
+@node_error_handler
 async def initiate_ceremony(state: State):
     """Initiate the ceremony"""
     
@@ -122,22 +174,23 @@ async def initiate_ceremony(state: State):
     "phase": "initiate"
     })
 
-    current_state["message"] = "Initiating Ceremony ..."
     await state["websocket"].send_text(json.dumps(current_state))
 
     prompt = ChatPromptTemplate.from_messages([
         ("system", ceremony_initiater_prompt),
     ])
     
-    chain = prompt | llm
+    chain = prompt | ceremony_llm
     response = chain.invoke({"event_name": state["event_name"], "theme": state["theme"], "venue": state["venue"], "time": state["time"], "purpose": state["purpose"]})
-    audio_url = text_to_speech(response.content)
-    response_data = {
-        "type": "audio_url",
-        "phase": "initiate",
-        "audio_url": audio_url
-    }
 
+    tts_client = TTS_Client(state["websocket"])
+
+    await tts_client.create_tts_connection()
+
+    await tts_client.send_text_to_murf(response.content)
+    await tts_client.close_tts_connection()
+
+    tts_client = None
     # empty the queue
     while not state["text_queue"].empty():
         try:
@@ -145,21 +198,26 @@ async def initiate_ceremony(state: State):
         except asyncio.QueueEmpty:
             break
     
-    await state["websocket"].send_text(json.dumps(response_data))
-    
+    # block the execution of agent untill audio finishes playing
     try:
         while True:
             data = await state["text_queue"].get()
             if data.get("audioFinished"):
-                return
+                ceremony_initiation = f"ceremony_initiation: {response.content}"
+                updates = {
+                    "ceremony_history": ceremony_initiation 
+                }
+                return updates
             else:
                 continue
     except Exception as e:
         logger.error(f"Some error occured while receiving audio flag in initiate ceremony: {e}")
 
+
 @node_error_handler
 async def introduce_speaker(state: State):
     """Introduces the speaker"""
+
     current_speaker_data = state["speakers_data"][state["current_speaker_id"]]
 
     
@@ -171,33 +229,35 @@ async def introduce_speaker(state: State):
         ("system", speaker_introduction_prompt)
     ])
     
-    chain = prompt | llm
+    chain = prompt | ceremony_llm
     speaker_introduction = chain.invoke({
         "speaker_id" : state["current_speaker_id"],
-        "speaker_name": current_speaker_data["speaker_name"], "speaker_designation": current_speaker_data["designation"], "speaker_inspiration": current_speaker_data["inspiration"], "purpose_of_speech": current_speaker_data["purpose_of_speech"], "script_of_speech": current_speaker_data["script_of_speech"]})
+        "speaker_name": current_speaker_data["speaker_name"], "speaker_designation": current_speaker_data["designation"], "speaker_inspiration": current_speaker_data["inspiration"], "purpose_of_speech": current_speaker_data["purpose_of_speech"], "script_of_speech": current_speaker_data["script_of_speech"],
+        "ceremony_history": state["ceremony_histoy"]})
 
+    
+    tts_client = TTS_Client(state["websocket"])
 
-    audio_url = text_to_speech(speaker_introduction.content)
-    response_data = {
-        "type": "audio_url",
-        "phase": "introduce",
-        "audio_url": audio_url
-    }
+    await tts_client.create_tts_connection()
 
+    await tts_client.send_text_to_murf(speaker_introduction.content)
+    await tts_client.close_tts_connection()
+
+    tts_client = None
     # empty the queue
     while not state["text_queue"].empty():
         try:
             state["text_queue"].get_nowait()
         except asyncio.QueueEmpty:
             break
-    
-    await state["websocket"].send_text(json.dumps(response_data))
-    
+        
     try:
         while True:
             data = await state["text_queue"].get()
             if data.get("audioFinished"):
-                return
+                updates = {'ceremony_history' : state['ceremony_summary'] + current_speaker_data['speaker_name'] + "'s introduction: " + speaker_introduction}
+                
+                return updates
             else:
                 continue
     except Exception as e:
@@ -205,7 +265,11 @@ async def introduce_speaker(state: State):
 
 @node_error_handler
 async def listen_to_speaker(state: State):
-    """Listens to speaker and detects speech end after every 1 minute"""
+    """Listens to speaker and send real-time transcription to frontend"""
+    
+    if not state["transcriptionClient"]:
+        raise ValueError("Transcription client is not initialized - cannot proceed")
+    
     current_speaker_data = state["speakers_data"][state["current_speaker_id"]]
     
 
@@ -230,7 +294,7 @@ async def listen_to_speaker(state: State):
     # remarks generation interval, after every quarter of time has passed
     # also convert to seconds
     # remark_generation_interval = (minutes_of_script_rounded / 4) * 60
-    remarks_speech_detection_llm = llm.with_structured_output(schema = Remarks) 
+    remarks_speech_detection_llm = ceremony_llm.with_structured_output(schema = Remarks) 
     chain = prompt | remarks_speech_detection_llm
     if state["websocket"]:
         # initiate a queue to store incoming audio chunks
@@ -251,11 +315,6 @@ async def listen_to_speaker(state: State):
 
         
         await state["websocket"].send_text(json.dumps(current_state))
-        # initiate a new transcription client
-        new_client = TranscriptionClient(state["websocket"], asyncio.get_running_loop())    
-        # initiate a new client thread to stop prevent effect
-        new_client_thread = threading.Thread(target=new_client.run, args=(state["audio_queue"],), daemon=True)
-
 
         # send currently speaking speaker details to frontend
         current_speaker_details = {**current_speaker_data, "type": "speaker_details",
@@ -269,27 +328,20 @@ async def listen_to_speaker(state: State):
                 data = await state["text_queue"].get()
                 if data.get("speaking", True):
 
-                    # start the client thread
-                    new_client_thread.start()
+                    
+                    print(f"🎤 Speaker {current_speaker_data['speaker_name']} has started the speech.")
 
                     # update current state, notify frontend
                     current_state.update({
                     "message": f"🎙️ Listening to Mr/Ms. {current_speaker_data['speaker_name']}'s speech"
                     })
                     
-                    print(f"🎤 Speaker {current_speaker_data['speaker_name']} has started the speech.")
                     continue
                     
                 elif not data.get("speaking", True):
 
-                    speaker_speech_partial = new_client.state
+                    speaker_speech_partial = state["transcriptionClient"].state
                     
-                    # close the fireworks ai connection
-                    new_client.close()
-
-                    new_client_thread.join(timeout=5)
-
-
                     # update current state
                     current_state.update({
                     "message": f'🎙️ Mr. {current_speaker_data["speaker_name"]}, has finished speaking, now giving remarks' , 
@@ -297,11 +349,16 @@ async def listen_to_speaker(state: State):
                     })
 
                     # speech ended, generate remarks
-                    response = chain.invoke({"speaker_name": current_speaker_data["speaker_name"], "speaker_designation": current_speaker_data["designation"], "purpose_of_speech": current_speaker_data["purpose_of_speech"], "speech": speaker_speech_partial})
+                    response = chain.invoke({"speaker_name": current_speaker_data["speaker_name"], "speaker_designation": current_speaker_data["designation"], "purpose_of_speech": current_speaker_data["purpose_of_speech"], "speech": speaker_speech_partial, "ceremony_history": state["ceremony_history"]})
+
+                    print("cleaning context...")
+                    state["transcriptionClient"].clean_context()
 
                     print(f"Speaker stopped speaking", response)
 
+                
                     update = {
+                        'ceremony_history' : state['ceremony_summary'] + current_speaker_data['speaker_name'] + "'s speech: "+ speaker_speech_partial,
                         "current_speaker_remarks" : response.remarks
                     }
                     
@@ -312,28 +369,32 @@ async def listen_to_speaker(state: State):
         except Exception as e:
             logger.error(f"Some error occured in listen to speaker: {e}")
 
+
 @node_error_handler                    
 async def give_remarks(state: State):
     """Play the given remarks and route to the correct node"""
 
     state["phase"] = "remarks"
     current_speaker = state["speakers_data"][state["current_speaker_id"]]
+
     current_state["message"] = f'Giving remarks to speaker {current_speaker["speaker_name"]}...'
+
     await state["websocket"].send_text(json.dumps(current_state))
     speaker_remarks = state["current_speaker_remarks"]
     try:
         if speaker_remarks:
-            try:
-                audio_url = text_to_speech(speaker_remarks)
+            try:    
+                tts_client = TTS_Client(state["websocket"])
+
+                await tts_client.create_tts_connection()
+
+                await tts_client.send_text_to_murf(speaker_remarks)
+                await tts_client.close_tts_connection()
+                tts_client = None
 
             except Exception as e:
                 print(f"Some error occured while generating speech: {e}")                
-            response_data = {
-                "type": "audio_url",
-                "phase": "remarks",
-                "audio_url": audio_url
-            }
-
+            
             # Clear stale messages from the text queue
             while not state["text_queue"].empty():
                 try:
@@ -341,7 +402,6 @@ async def give_remarks(state: State):
                 except asyncio.QueueEmpty:
                     break
 
-            await state["websocket"].send_text(json.dumps(response_data))
             try:
                 while True:
                     data = await state["text_queue"].get()
@@ -351,9 +411,12 @@ async def give_remarks(state: State):
 
                             print("current speaker id", new_speaker_id)
                             print(f"Introduce the next speaker")
+                            
                             update = {
+                                'ceremony_history' : state['ceremony_summary'] + "speech_acknowledgments: " + speaker_remarks,
                                 "current_speaker_id" : new_speaker_id
                             }
+
                             goto = "introduce_speaker"
                             return Command(goto = goto, update=update)
                         else:
@@ -375,27 +438,28 @@ async def give_remarks(state: State):
 async def end_ceremony(state: State):
     """Provide graceful remarks to end ceremony"""
     
+
     state["phase"] = "end"
 
     current_state["message"] = "🎉 Ending the ceremony, thank you for attending the event..."
+
     await state["websocket"].send_text(json.dumps(current_state))
     prompt = ChatPromptTemplate.from_messages([
         ("system", ceremony_end_prompt)
     ])
 
-    chain = prompt | llm
+    chain = prompt | ceremony_llm
 
-    ending_remarks = chain.invoke({"speakers_data": state["speakers_data"], "event_name": state["event_name"], "theme": state["theme"], "venue": state["venue"], "purpose": state["purpose"]})
+    ending_remarks = chain.invoke({"speakers_data": state["speakers_data"], "event_name": state["event_name"], "theme": state["theme"], "venue": state["venue"], "purpose": state["purpose"],"ceremony_history": state["ceremony_history"]})
 
     try :
-        audio_url = text_to_speech(ending_remarks.content)
+        tts_client = TTS_Client(state["websocket"])
 
-        response_data = {
-            "type": "audio_url",
-            "phase": "end",
-            "audio_url": audio_url
-        }
+        await tts_client.create_tts_connection()
 
+        await tts_client.send_text_to_murf(ending_remarks.content)
+        await tts_client.close_tts_connection()
+        tts_client = None
         # Clear stale messages from the text queue
         while not state["text_queue"].empty():
             try:
@@ -403,11 +467,15 @@ async def end_ceremony(state: State):
             except asyncio.QueueEmpty:
                 break
 
-        await state["websocket"].send_text(json.dumps(response_data))
         try:
             while True:
                 data = await state["text_queue"].get()
                 if data.get("audioFinished"):
+                    # set the stop event to stop thread execution
+                    state["stop_event"].set()
+                    
+                    if state["transcriptionClient"]:
+                        state["transcriptionClient"].close()
                     return
                 else:
                     continue
@@ -420,6 +488,7 @@ async def end_ceremony(state: State):
 
 graph_builder = StateGraph(State)
 # orchestrate the workflow
+graph_builder.add_node("create_websocket_connections", create_websocket_connections)
 graph_builder.add_node("read_script", read_script)
 graph_builder.add_node("initiate_ceremony", initiate_ceremony)
 graph_builder.add_node("introduce_speaker", introduce_speaker)
@@ -427,7 +496,8 @@ graph_builder.add_node("listen_to_speaker", listen_to_speaker)
 graph_builder.add_node("give_remarks", give_remarks)
 graph_builder.add_node("end_ceremony", end_ceremony)
 
-graph_builder.add_edge(START, "read_script")
+graph_builder.add_edge(START, "create_websocket_connections")
+graph_builder.add_edge("create_websocket_connections", "read_script")
 graph_builder.add_edge("read_script", "initiate_ceremony")
 graph_builder.add_edge("initiate_ceremony", "introduce_speaker")
 graph_builder.add_edge("introduce_speaker", "listen_to_speaker")

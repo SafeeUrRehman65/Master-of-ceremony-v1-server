@@ -11,7 +11,6 @@ import asyncio
 from master_of_ceremony import agent
 from errorHandler import send_error
 
-
 load_dotenv()
 client = Murf(api_key=os.getenv("MURF_AI_API_KEY"))
 
@@ -48,7 +47,7 @@ async def receive_from_websocket(websocket: WebSocket, audio_queue: ThreadQueue,
 
                                 data_phase = data["phase"]
                                 if data_phase == "initiate":
-                                    asyncio.create_task(run_ceremony_agent(websocket, text_queue, audio_queue))
+                                    asyncio.create_task(run_ceremony_agent(websocket, text_queue, audio_queue, stop_event))
                                     
                             else:
                                 print("putting data in text queue!")
@@ -60,6 +59,7 @@ async def receive_from_websocket(websocket: WebSocket, audio_queue: ThreadQueue,
             
             except WebSocketDisconnect as e:
                 print("❌ WebSocketDisconnect raised - client disconnected.")
+                stop_event.set()
                 break
 
             except Exception as e:
@@ -72,15 +72,17 @@ async def receive_from_websocket(websocket: WebSocket, audio_queue: ThreadQueue,
         stop_event.set()
 
 
-async def run_ceremony_agent (websocket, text_queue, audio_queue):
+async def run_ceremony_agent (websocket, text_queue, audio_queue, stop_event):
     """Run agent without affecting main receiver"""
 
-    try: 
-        await agent.ainvoke({
+    state = {
             'websocket': websocket,
+            'transcriptionClient': None,
             'text_queue': text_queue,
             'audio_queue': audio_queue,
+            'stop_event': stop_event,
             'event_name':" ",
+            'ceremony_histoy': " ",
             'theme':" ",
             'venue':" ",
             'time':" ",
@@ -88,13 +90,17 @@ async def run_ceremony_agent (websocket, text_queue, audio_queue):
             "current_speaker_id": 0,
             'speakers_names': [],
             "current_speaker_remarks": " ",
-            "ceremony_summary": " ",
             'speakers_data': [],
             "phase": "prepare",
-        })
+        }
+    try: 
+        await agent.ainvoke(state)
 
     except WebSocketDisconnect as e:
         logger.warning("🛑 WebSocket disconnected by client (tab closed, reloaded, etc).")
+        stop_event.set()
+        if state["transcriptionClient"]:
+            state["transcriptionClient"].close()
         
     except asyncio.CancelledError as e:
         logger.info("Agent task was cancelled")    

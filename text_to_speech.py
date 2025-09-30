@@ -1,8 +1,13 @@
-import os
-from dotenv import load_dotenv
 from murf import Murf
+import websockets
+import json
+import base64
+from dotenv import load_dotenv
+import os
 
 load_dotenv()
+
+
 client = Murf(api_key=os.getenv("MURF_AI_API_KEY"))
 
 def text_to_speech(text: str):
@@ -15,3 +20,5 @@ def text_to_speech(text: str):
 
 
     return response.audio_file
+
+
