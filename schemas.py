@@ -51,7 +51,7 @@ class State(TypedDict):
     current_speaker_id: int
     speakers_names: List
     current_speaker_remarks: str
-    ceremony_histoy: str
+    ceremony_history: str
     speakers_data: List
     phase: Literal["prepare", "initiate","introduce", "listen", "speeches", "remarks", "end"]
 

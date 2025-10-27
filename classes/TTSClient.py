@@ -28,6 +28,7 @@ class TTS_Client:
         self.tts_ws = await websockets.connect(
             f"{WS_URL}?api-key={API_KEY}&sample_rate=44100&channel_type=MONO&format=MP3"
         )
+        print(f'TTS websocket connection established successfully')
 
         # Send voice config first (optional)
         voice_config_msg = {

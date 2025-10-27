@@ -17,20 +17,26 @@ from textstat import textstat
 from dotenv import load_dotenv
 from langchain.prompts import ChatPromptTemplate
 from langchain_fireworks import ChatFireworks
+from langchain_groq import ChatGroq
 from schemas import script_json_schema
 from schemas import Script, State, Remarks, script_json_schema
 
 load_dotenv()
-llm = ChatFireworks(
-    api_key = os.getenv("FIREWORKS_API_KEY"),
+llm = ChatGroq(
+    api_key = os.getenv("GROQ_AI_API_KEY"),
+    model="openai/gpt-oss-120b",
     temperature=0,
-    model="accounts/fireworks/models/kimi-k2-instruct-0905",
 )
 
-ceremony_llm = ChatFireworks(
-    api_key = os.getenv("FIREWORKS_API_KEY"),
+# ceremony_llm = ChatFireworks(
+#     api_key = os.getenv("FIREWORKS_API_KEY"),
+#     temperature=0,
+#     model="accounts/fireworks/models/gpt-oss-120b",
+# )
+ceremony_llm = ChatGroq(
+    api_key = os.getenv("GROQ_AI_API_KEY"),
+    model="openai/gpt-oss-120b",
     temperature=0,
-    model="accounts/fireworks/models/gpt-oss-120b",
 )
 
 # /fireworks/models/deepseek-v3p1
@@ -233,7 +239,7 @@ async def introduce_speaker(state: State):
     speaker_introduction = chain.invoke({
         "speaker_id" : state["current_speaker_id"],
         "speaker_name": current_speaker_data["speaker_name"], "speaker_designation": current_speaker_data["designation"], "speaker_inspiration": current_speaker_data["inspiration"], "purpose_of_speech": current_speaker_data["purpose_of_speech"], "script_of_speech": current_speaker_data["script_of_speech"],
-        "ceremony_history": state["ceremony_histoy"]})
+        "ceremony_history": state["ceremony_history"]})
 
     
     tts_client = TTS_Client(state["websocket"])
@@ -255,7 +261,7 @@ async def introduce_speaker(state: State):
         while True:
             data = await state["text_queue"].get()
             if data.get("audioFinished"):
-                updates = {'ceremony_history' : state['ceremony_summary'] + current_speaker_data['speaker_name'] + "'s introduction: " + speaker_introduction}
+                updates = {'ceremony_history' : state['ceremony_history'] + current_speaker_data['speaker_name'] + "'s introduction: " + speaker_introduction}
                 
                 return updates
             else:
@@ -358,7 +364,7 @@ async def listen_to_speaker(state: State):
 
                 
                     update = {
-                        'ceremony_history' : state['ceremony_summary'] + current_speaker_data['speaker_name'] + "'s speech: "+ speaker_speech_partial,
+                        'ceremony_history' : state['ceremony_history'] + current_speaker_data['speaker_name'] + "'s speech: "+ speaker_speech_partial,
                         "current_speaker_remarks" : response.remarks
                     }
                     
@@ -413,7 +419,7 @@ async def give_remarks(state: State):
                             print(f"Introduce the next speaker")
                             
                             update = {
-                                'ceremony_history' : state['ceremony_summary'] + "speech_acknowledgments: " + speaker_remarks,
+                                'ceremony_history' : state['ceremony_history'] + "speech_acknowledgments: " + speaker_remarks,
                                 "current_speaker_id" : new_speaker_id
                             }
 
