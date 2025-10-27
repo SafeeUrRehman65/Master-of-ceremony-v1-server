@@ -1,10 +1,8 @@
 import asyncio
 import json
-from math import e
 import threading
 from queue import Queue as ThreadQueue
 from asyncio import Queue as AsyncQueue
-from tkinter import E
 from typing import List
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, WebSocketException
 from helperFunctions import  receive_from_websocket 
@@ -15,6 +13,10 @@ from errorHandler import send_error
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
+
+@app.get('/health-check')
+async def check_connection():
+    return {"status":"ok"}
 
 @app.websocket('/ws')
 async def websocket_endpoint(websocket: WebSocket):

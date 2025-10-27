@@ -55,7 +55,7 @@ parser = PydanticOutputParser(pydantic_object= Script)
 llm_with_structured_output = llm.with_structured_output(script_json_schema, include_raw = True)
 
 
-loader = PyPDFLoader("context/BOE_Agenda.pdf")
+loader = PyPDFLoader("context/LHF 2025.pdf")
 pages = loader.load_and_split()
 
 boe_agenda_text = " ".join(list(map(lambda page: page.page_content, pages))) 
