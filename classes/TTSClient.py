@@ -1,3 +1,4 @@
+import re
 from murf import Murf
 import websockets
 import json
@@ -69,10 +70,13 @@ class TTS_Client:
             "text": transcription,
             "end" : True # This will close the context. So you can re-run and concurrency is available.
         }
+
         print(f'Sending payload : {text_msg}')
         if self.tts_ws:
 
             try:
+                text_msg["text"] = clean_for_tts(text_msg['text'])
+
                 await self.tts_ws.send(json.dumps(text_msg))
                 try:
                     await self.stream_audio_to_frontend()
@@ -123,3 +127,17 @@ class TTS_Client:
                 self._is_connected = False
             except Exception as e:
                 print(f"Some error occured while receiving audio: {e}")
+
+
+
+
+def clean_for_tts(text):
+    # Remove markdown, tables, bullets, and excessive symbols
+    text = re.sub(r"[#*_`|~^><=]+", "", text)
+    # Remove horizontal rules or repeated symbols (---, ===, etc.)
+    text = re.sub(r"[-=_]{2,}", "", text)
+    # Remove emojis or non-text symbols
+    text = re.sub(r"[^\w\s.,!?\"'’”“():;–—%&]", "", text)
+    # Normalize whitespace
+    text = re.sub(r"\s+", " ", text).strip()
+    return text

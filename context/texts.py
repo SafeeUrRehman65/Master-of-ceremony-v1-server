@@ -82,3 +82,95 @@ Before we move to the final part of our program, I want to add my congratulation
 
 As we leave here tonight, let’s carry this energy forward. Let’s use the inspiration we’ve drawn from our colleagues to fuel our own projects and ambitions. Let’s challenge ourselves to be the honorees on this stage next year. Let’s continue to build, innovate, and support one another.
 """
+
+
+london_halal_forum_data = {
+  "event_name": "London Halal Forum 2025",
+  "theme": "Halal Tayeb for Humanity",
+  "venue": "Excel, London",
+  "time": "09:30 AM - 06:20 PM",
+  "purpose": " The conference program focuses on one main track:- Halal a global standard for business excellence and sustainability Vision: to integrate these values across all event elements, ensuring alignment between content, exhibition, networking areas, and B2B meetings. By embedding these principles into every engagement platform, the event fosters a cohesive, high-impact environment for industry Key players",
+  "program_approach":" At London Halal Forum 2025, we highlight business excellency as the natural outcome of strategies built on integrity, transparency, and innovation. By positioning Halal as a universal value of “Quality”, we move beyond its religious significance to showcase it as a competitive advantage that enhances product integrity, ethical business practices, and market growth.",
+  "unique_selling_points": "Halal Businesses stand out through their commitment to:\n1. Product Excellence: Superior quality and market leadership\n2. Brand Transparency: Trust, Integrity, and reputation\n3. Market Innovation: Cutting-edge strategies and competitive advantage\n4. Business Sustainability: Long-term growth and resilience\n5. Strategic Collaboration: Scalable growth and operational efficiency"
+  "",
+  "target_audience": "1. Trade Organizations: governmental and non-governmental.\n 2. Halal Industry Professionals & Experts (Suppliers, Distributors, Institutions, Consultants, Agencies, etc...) \n 3.Regulatory Bodies \n 4. Halal Private sector in F&B, Finance, Cosmetics & Pharma, Tourism & Hospitality, Modest Fashion & Lifestyle. \n 5. Investors and Entrepreneurs.\n 6. International Media and Journalists",
+  "speakers_names": [
+    { "speaker_name": "Qari Doctor. Ahmed Al-Sudais" },
+    { "speaker_name": "H.E. Mister. Necmeddin Bilal Erdoğan" },
+    { "speaker_name": "H.E. Mister. Yousef Khalawi" },
+    { "speaker_name": "H.E. Mister. Fahad Alnuhait" },
+    { "speaker_name": "Doctor Aisha Al-Zahrani" },
+    { "speaker_name": "H.E. Mister. Abdul Rahman Al-Qassimi" },
+  ],
+  "speakers_data": [
+    {
+      "speaker_name": "Qari Doctor. Ahmed Al-Sudais",
+      "designation": "Imam and Renowned Quran Reciter, Kingdom of Saudi Arabia",
+      "inspiration": "Promoting unity through the recitation of the Holy Quran",
+      "purpose_of_speech": "Recitation to bless the opening ceremony with Quranic verses",
+      "script_of_speech": ""
+    },
+    {
+      "speaker_name": "H.E. Mister. Necmeddin Bilal Erdoğan",
+      "designation": "Chairman of the Board of Trustees at İlim Yayma Foundation",
+      "inspiration": "Strengthening Islamic education and youth leadership globally",
+      "purpose_of_speech": "To welcome participants and emphasize educational collaboration",
+      "script_of_speech": ""
+    },
+    {
+      "speaker_name": "H.E. Mister. Yousef Khalawi",
+      "designation": "Secretary General of The Islamic Chamber of Commerce and Development (ICCD)",
+      "inspiration": "Encouraging economic cooperation among OIC member states",
+      "purpose_of_speech": "Launching the Halal Report on the United Kingdom issued by the Islamic Chamber of Commerce and Industry ",
+      "script_of_speech": ""
+    },
+    {
+      "speaker_name": "H.E. Mister. Fahad Alnuhait",
+      "designation": "Chief Executive Officer of the Halal Products Development Company (HPDC)",
+      "inspiration": "Advancing innovation and transparency in halal product markets",
+      "purpose_of_speech": "To discuss strategic initiatives in the global halal industry",
+      "script_of_speech": ""
+    },
+    {
+      "speaker_name": "Doctor Aisha Al-Zahrani",
+      "designation": "Director of Global Halal Research Centre, KSA",
+      "inspiration": "Empowering research and female leadership in the halal sector",
+      "purpose_of_speech": "To deliver the keynote on sustainable growth in halal economies",
+      "script_of_speech": ""
+    },
+    {
+      "speaker_name": "H.E. Mister. Abdul Rahman Al-Qassimi",
+      "designation": "Deputy Minister for International Trade Affairs, Ministry of Commerce – Saudi Arabia",
+      "inspiration": "Building bridges between Islamic trade partners globally",
+      "purpose_of_speech": "To share insights on international halal trade cooperation",
+      "script_of_speech": ""
+    },
+  ]
+}
+
+
+halal_forum_london_sponsors_data = {
+  "sponsors": [
+    {
+      "sponsor_name": "Halal Products Development Company"
+    },
+    {
+      "sponsor_name": "Islamic Chamber of Commerce and Development"
+    },
+    {
+      "sponsor_name": "Saudi Food and Drug Authority"
+    },
+    {
+      "sponsor_name": "International Halal Accreditation Forum"
+    },
+    {
+      "sponsor_name": "United Kingdom Department for Business and Trade"
+    },
+    {
+      "sponsor_name": "London Muslim Business Association"
+    },
+    {
+      "sponsor_name": "Global Halal Market Enterprises"
+    }
+  ]
+}

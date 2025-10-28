@@ -12,7 +12,8 @@ from langgraph.graph import StateGraph, START, END
 from langgraph.types import Command
 from classes.transcriptionClient import TranscriptionClient
 from classes.TTSClient import TTS_Client
-from prompts import ceremony_initiater_prompt, script_output_prompt, speaker_introduction_prompt, speaker_remark_prompt, ceremony_end_prompt, script_extraction_prompt
+from prompts import ceremony_initiater_prompt, script_output_prompt, speaker_introduction_prompt, speaker_remark_prompt, ceremony_end_prompt, script_extraction_prompt, honor_sponsors_prompt
+from context.texts import london_halal_forum_data, halal_forum_london_sponsors_data
 from textstat import textstat
 from dotenv import load_dotenv
 from langchain.prompts import ChatPromptTemplate
@@ -69,54 +70,53 @@ logger = logging.getLogger(__name__)
 async def read_script(state: State):
     """Read the script and produce structured outputs"""
     
-    if current_state:
-        # update current state
-        current_state.update({
-        "message":" ", 
-        "phase": " "
-        })
+    # if current_state:
+    #     # update current state
+    #     current_state.update({
+    #     "message":" ", 
+    #     "phase": " "
+    #     })
 
+    
     # prompt = ChatPromptTemplate.from_messages([
-    #     ("system", script_output_prompt)
-    # ]).partial(format_instructions = parser.get_format_instructions())
-    prompt = ChatPromptTemplate.from_messages([
-    ("system", script_extraction_prompt)
-    ])
+    # ("system", script_extraction_prompt)
+    # ])
     current_state["message"] = "📜 Reading script to extract ceremony information..."
 
     await state["websocket"].send_text(json.dumps(current_state))
 
     
-    chain = prompt | llm
+    # chain = prompt | llm
 
-    response = chain.invoke({"script": boe_agenda_text})
+    # response = chain.invoke({"script": boe_agenda_text})
 
-    if response is None:
-        print(f"🟥 No structured output parsed from given script!")
-        goto = END
+    # if response is None:
+    #     print(f"🟥 No structured output parsed from given script!")
+    #     goto = END
 
-        return Command(goto = goto, update = {})
+    #     return Command(goto = goto, update = {})
 
-    print("script with structured outputs", response.content)
-    # overwrite response
-    response = json.loads(response.content)
-    if (len(response["speakers_names"]) == 0 or len(response["speakers_data"]) == 0):
-        print(f"🟥 There is no speakers data in the script so ending MoC agent")
-        goto = END
-        # pass empty_list as there is no speakers data in the script
-        updated_message = {}
-        return Command(goto = goto, update = updated_message)
+    # print("script with structured outputs", response.content)
+    # # overwrite response
+    # response = json.loads(response.content)
+    # if (len(response["speakers_names"]) == 0 or len(response["speakers_data"]) == 0):
+    #     print(f"🟥 There is no speakers data in the script so ending MoC agent")
+    #     goto = END
+    #     # pass empty_list as there is no speakers data in the script
+    #     updated_message = {}
+    #     return Command(goto = goto, update = updated_message)
 
-    updated_message = {
-        "event_name" : response["event_name"],
-        'theme' : response["theme"],
-        'venue' : response["venue"],
-        'time' : response["time"],
-        'purpose' : response["purpose"],
-        'speakers_names' : response["speakers_names"],
-        'speakers_data' : response["speakers_data"]
-    }
-    print(f"Ceremony data extracted from the script: {updated_message}")
+    # updated_message = {
+    #     "event_name" : response["event_name"],
+    #     'theme' : response["theme"],
+    #     'venue' : response["venue"],
+    #     'time' : response["time"],
+    #     'purpose' : response["purpose"],
+    #     'speakers_names' : response["speakers_names"],
+    #     'speakers_data' : response["speakers_data"]
+    # }
+    updated_message = london_halal_forum_data
+    print(f"Ceremony data extracted from the script: {london_halal_forum_data}")
 
     # send ceremony information to frontend
     response_data = { **updated_message, "type":"ceremony_data" }
@@ -364,8 +364,8 @@ async def listen_to_speaker(state: State):
 
                 
                     update = {
-                        'ceremony_history' : state['ceremony_history'] + current_speaker_data['speaker_name'] + "'s speech: "+ speaker_speech_partial,
-                        "current_speaker_remarks" : response.remarks
+                        'ceremony_history' : state['ceremony_history'] + current_speaker_data['speaker_name'] + "'s speech: "+ (speaker_speech_partial or ""),
+                        "current_speaker_remarks" : (response.remarks or "")
                     }
                     
                     return update
@@ -424,10 +424,10 @@ async def give_remarks(state: State):
                             }
 
                             goto = "introduce_speaker"
-                            return Command(goto = goto, update=update)
+                            return Command(goto = goto, update=update)                    
                         else:
-                            print(f"All speeches delivered. End the ceremony")
-                            goto = "end_ceremony"
+                            print(f"All speeches delivered. Now honor the sponsors")
+                            goto = "honor_sponsors"
                             return Command(goto = goto)
                     else:
                         continue  
@@ -439,6 +439,60 @@ async def give_remarks(state: State):
             ❌ Cant play audio""")
     except Exception as error:
         print(f"Some error occured while sending audio url to frontend: {error}")
+
+
+
+@node_error_handler
+async def honor_sponsors(state: State):
+    """Honor the sponsors of the event"""
+    state["phase"]="honor_sponsors"
+
+    current_state["message"] = "Honoring Sponsors of the London Halal Forum 2025"
+
+    await state["websocket"].send_text(json.dumps(current_state))
+
+
+    prompt = ChatPromptTemplate.from_messages([
+        ("system",honor_sponsors_prompt )
+    ])
+
+    chain = prompt | ceremony_llm
+    response = chain.invoke({"ceremony_history":state["ceremony_history"],"sponsors_data": halal_forum_london_sponsors_data})
+
+    try :
+        tts_client = TTS_Client(state["websocket"])
+
+        await tts_client.create_tts_connection()
+
+        await tts_client.send_text_to_murf(response.content)
+        await tts_client.close_tts_connection()
+        tts_client = None
+        # Clear stale messages from the text queue
+        while not state["text_queue"].empty():
+            try:
+                state["text_queue"].get_nowait()
+            except asyncio.QueueEmpty:
+                break
+
+        try:
+            while True:
+                data = await state["text_queue"].get()
+                if data.get("audioFinished"):
+                    # set the stop event to stop thread execution
+                    goto = 'end_ceremony'
+                    update = {
+                        'ceremony_history' : state['ceremony_history'] + "sponsors_honor: " + response.content
+                    }
+
+                    return Command(goto = goto, update = update)
+                    
+                else:
+                    continue
+        except Exception as e:
+            logger.error(f"Some error occured in initiate ceremony: {e}")
+    except Exception as error:
+        print(f"Some error ocurred: {error}")
+
 
 @node_error_handler
 async def end_ceremony(state: State):
@@ -500,6 +554,7 @@ graph_builder.add_node("initiate_ceremony", initiate_ceremony)
 graph_builder.add_node("introduce_speaker", introduce_speaker)
 graph_builder.add_node("listen_to_speaker", listen_to_speaker)
 graph_builder.add_node("give_remarks", give_remarks)
+graph_builder.add_node("honor_sponsors", honor_sponsors)
 graph_builder.add_node("end_ceremony", end_ceremony)
 
 graph_builder.add_edge(START, "create_websocket_connections")

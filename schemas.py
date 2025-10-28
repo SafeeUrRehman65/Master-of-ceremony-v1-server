@@ -53,7 +53,7 @@ class State(TypedDict):
     current_speaker_remarks: str
     ceremony_history: str
     speakers_data: List
-    phase: Literal["prepare", "initiate","introduce", "listen", "speeches", "remarks", "end"]
+    phase: Literal["prepare", "initiate","introduce", "listen", "speeches", "remarks", "honor_sponsors","end"]
 
     # for centralized communication
     text_queue: AsyncQueue
