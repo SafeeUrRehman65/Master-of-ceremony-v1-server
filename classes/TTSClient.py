@@ -18,10 +18,11 @@ CHANNELS = 1
 
 
 class TTS_Client:
-    def __init__(self, frontend_ws):
+    def __init__(self, frontend_ws, speaker):
         self.frontend_ws = frontend_ws
         self.tts_ws = None
         self._is_connected = False #Track connection status
+        self.speaker = speaker
     
 
     async def create_tts_connection(self):
@@ -34,7 +35,7 @@ class TTS_Client:
         # Send voice config first (optional)
         voice_config_msg = {
             "voice_config": {
-                "voiceId": "en-US-ken",
+                "voiceId": self.speaker,
                 "style": "Promo",
                 "rate": 0,
                 "pitch": 6,

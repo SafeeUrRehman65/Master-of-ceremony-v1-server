@@ -86,10 +86,12 @@ As we leave here tonight, let’s carry this energy forward. Let’s use the ins
 
 london_halal_forum_data = {
   "event_name": "London Halal Forum 2025",
+  "organized_by":["Islamic Chamber of Halal Services", "Islamic Chamber of Commerce and Development"],
   "theme": "Halal Tayeb for Humanity",
   "venue": "Excel, London",
   "time": "09:30 AM - 06:20 PM",
-  "purpose": " The conference program focuses on one main track:- Halal a global standard for business excellence and sustainability Vision: to integrate these values across all event elements, ensuring alignment between content, exhibition, networking areas, and B2B meetings. By embedding these principles into every engagement platform, the event fosters a cohesive, high-impact environment for industry Key players",
+  "purpose": "The conference program focuses on one main track:- Halal a global standard for business excellence and sustainability",
+  "vision": "to integrate these values across all event elements, ensuring alignment between content, exhibition, networking areas, and B2B meetings. By embedding these principles into every engagement platform, the event fosters a cohesive, high-impact environment for industry Key players",
   "program_approach":" At London Halal Forum 2025, we highlight business excellency as the natural outcome of strategies built on integrity, transparency, and innovation. By positioning Halal as a universal value of “Quality”, we move beyond its religious significance to showcase it as a competitive advantage that enhances product integrity, ethical business practices, and market growth.",
   "unique_selling_points": "Halal Businesses stand out through their commitment to:\n1. Product Excellence: Superior quality and market leadership\n2. Brand Transparency: Trust, Integrity, and reputation\n3. Market Innovation: Cutting-edge strategies and competitive advantage\n4. Business Sustainability: Long-term growth and resilience\n5. Strategic Collaboration: Scalable growth and operational efficiency"
   "",
@@ -171,6 +173,62 @@ halal_forum_london_sponsors_data = {
     },
     {
       "sponsor_name": "Global Halal Market Enterprises"
+    }
+  ]
+}
+halal_forum_london_sponsors_data = {
+  "sponsors": [
+    {
+      "sponsor_name": "Halal Devco",
+      "sponsor_type": "Exclusive Strategic Sponsor"
+    },
+    {
+      "sponsor_name": "MODON (Saudi Authority for Industrial Cities and Technology Zones)",
+      "sponsor_type": "Diamond Sponsor"
+    },
+    {
+      "sponsor_name": "Believe",
+      "sponsor_type": "Gold Sponsor"
+    },
+    {
+      "sponsor_name": "BRF",
+      "sponsor_type": "Gold Sponsor"
+    },
+    {
+      "sponsor_name": "Addoha Poultry Company",
+      "sponsor_type": "Gold Sponsor"
+    },
+    {
+      "sponsor_name": "Turkish Airlines",
+      "sponsor_type": "Exclusive Carrier Sponsor"
+    },
+    {
+      "sponsor_name": "Muslim Trade Forum (MTF)",
+      "sponsor_type": "UK Exclusive Partner"
+    },
+    {
+      "sponsor_name": "Saudi Halal Center",
+      "sponsor_type": "Official Partner"
+    },
+    {
+      "sponsor_name": "Albaraka Forum for Islamic Economy",
+      "sponsor_type": "Principle Partner"
+    },
+    {
+      "sponsor_name": "Halex",
+      "sponsor_type": "B2B Corporate Partner"
+    },
+    {
+      "sponsor_name": "Halal Scoop",
+      "sponsor_type": "Halal Travel Partner"
+    },
+    {
+      "sponsor_name": "Curzon",
+      "sponsor_type": "Halal Echo PR Partner"
+    },
+    {
+      "sponsor_name": "Islamic Chamber Halal Services (ICHS)",
+      "sponsor_type": "Organizer"
     }
   ]
 }

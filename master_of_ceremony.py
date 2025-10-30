@@ -20,7 +20,7 @@ from langchain.prompts import ChatPromptTemplate
 from langchain_fireworks import ChatFireworks
 from langchain_groq import ChatGroq
 from schemas import script_json_schema
-from schemas import Script, State, Remarks, script_json_schema
+from schemas import Script, State, script_json_schema
 
 load_dotenv()
 llm = ChatGroq(
@@ -187,13 +187,17 @@ async def initiate_ceremony(state: State):
     ])
     
     chain = prompt | ceremony_llm
-    response = chain.invoke({"event_name": state["event_name"], "theme": state["theme"], "venue": state["venue"], "time": state["time"], "purpose": state["purpose"]})
+    response = chain.invoke({"event_name": state["event_name"],"organized_by": state["organized_by"], "theme": state["theme"], "venue": state["venue"], "time": state["time"], "purpose": state["purpose"], "vision":state["vision"], "program_approach":state["program_approach"], "unique_selling_points": state["unique_selling_points"], "target_audience": state["target_audience"]})
 
-    tts_client = TTS_Client(state["websocket"])
+    tts_client = TTS_Client(state["websocket"], state["speaker"])
 
     await tts_client.create_tts_connection()
 
     await tts_client.send_text_to_murf(response.content)
+    await state["websocket"].send_text(json.dumps({
+        'type': 'script',
+        'content': response.content
+    }))
     await tts_client.close_tts_connection()
 
     tts_client = None
@@ -236,17 +240,21 @@ async def introduce_speaker(state: State):
     ])
     
     chain = prompt | ceremony_llm
-    speaker_introduction = chain.invoke({
+    response = chain.invoke({
         "speaker_id" : state["current_speaker_id"],
         "speaker_name": current_speaker_data["speaker_name"], "speaker_designation": current_speaker_data["designation"], "speaker_inspiration": current_speaker_data["inspiration"], "purpose_of_speech": current_speaker_data["purpose_of_speech"], "script_of_speech": current_speaker_data["script_of_speech"],
         "ceremony_history": state["ceremony_history"]})
 
     
-    tts_client = TTS_Client(state["websocket"])
+    tts_client = TTS_Client(state["websocket"], state['speaker'])
 
     await tts_client.create_tts_connection()
 
-    await tts_client.send_text_to_murf(speaker_introduction.content)
+    await tts_client.send_text_to_murf(response.content)
+    await state["websocket"].send_text(json.dumps({
+        'type': 'script',
+        'content': response.content
+    }))
     await tts_client.close_tts_connection()
 
     tts_client = None
@@ -261,7 +269,7 @@ async def introduce_speaker(state: State):
         while True:
             data = await state["text_queue"].get()
             if data.get("audioFinished"):
-                updates = {'ceremony_history' : state['ceremony_history'] + current_speaker_data['speaker_name'] + "'s introduction: " + speaker_introduction}
+                updates = {'ceremony_history' : state['ceremony_history'] + current_speaker_data['speaker_name'] + "'s introduction: " + response.content}
                 
                 return updates
             else:
@@ -300,8 +308,8 @@ async def listen_to_speaker(state: State):
     # remarks generation interval, after every quarter of time has passed
     # also convert to seconds
     # remark_generation_interval = (minutes_of_script_rounded / 4) * 60
-    remarks_speech_detection_llm = ceremony_llm.with_structured_output(schema = Remarks) 
-    chain = prompt | remarks_speech_detection_llm
+     
+    chain = prompt | ceremony_llm
     if state["websocket"]:
         # initiate a queue to store incoming audio chunks
         
@@ -360,12 +368,12 @@ async def listen_to_speaker(state: State):
                     print("cleaning context...")
                     state["transcriptionClient"].clean_context()
 
-                    print(f"Speaker stopped speaking", response)
+                    print(f"Speaker stopped speaking", response.content)
 
                 
                     update = {
                         'ceremony_history' : state['ceremony_history'] + current_speaker_data['speaker_name'] + "'s speech: "+ (speaker_speech_partial or ""),
-                        "current_speaker_remarks" : (response.remarks or "")
+                        "current_speaker_remarks" : (response.content or "")
                     }
                     
                     return update
@@ -390,11 +398,15 @@ async def give_remarks(state: State):
     try:
         if speaker_remarks:
             try:    
-                tts_client = TTS_Client(state["websocket"])
+                tts_client = TTS_Client(state["websocket"], state['speaker'])
 
                 await tts_client.create_tts_connection()
 
                 await tts_client.send_text_to_murf(speaker_remarks)
+                await state["websocket"].send_text(json.dumps({
+                'type': 'script',
+                'content': speaker_remarks
+                }))
                 await tts_client.close_tts_connection()
                 tts_client = None
 
@@ -453,18 +465,22 @@ async def honor_sponsors(state: State):
 
 
     prompt = ChatPromptTemplate.from_messages([
-        ("system",honor_sponsors_prompt )
+        ("system", honor_sponsors_prompt )
     ])
 
     chain = prompt | ceremony_llm
     response = chain.invoke({"ceremony_history":state["ceremony_history"],"sponsors_data": halal_forum_london_sponsors_data})
 
     try :
-        tts_client = TTS_Client(state["websocket"])
+        tts_client = TTS_Client(state["websocket"], state['speaker'])
 
         await tts_client.create_tts_connection()
 
         await tts_client.send_text_to_murf(response.content)
+        await state["websocket"].send_text(json.dumps({
+            'type': 'script',
+            'content': response.content
+        }))
         await tts_client.close_tts_connection()
         tts_client = None
         # Clear stale messages from the text queue
@@ -498,7 +514,6 @@ async def honor_sponsors(state: State):
 async def end_ceremony(state: State):
     """Provide graceful remarks to end ceremony"""
     
-
     state["phase"] = "end"
 
     current_state["message"] = "🎉 Ending the ceremony, thank you for attending the event..."
@@ -510,14 +525,18 @@ async def end_ceremony(state: State):
 
     chain = prompt | ceremony_llm
 
-    ending_remarks = chain.invoke({"speakers_data": state["speakers_data"], "event_name": state["event_name"], "theme": state["theme"], "venue": state["venue"], "purpose": state["purpose"],"ceremony_history": state["ceremony_history"]})
+    response = chain.invoke({"speakers_data": state["speakers_data"], "event_name": state["event_name"], "theme": state["theme"], "venue": state["venue"], "purpose": state["purpose"],"ceremony_history": state["ceremony_history"]})
 
     try :
-        tts_client = TTS_Client(state["websocket"])
+        tts_client = TTS_Client(state["websocket"], state['speaker'])
 
         await tts_client.create_tts_connection()
 
-        await tts_client.send_text_to_murf(ending_remarks.content)
+        await tts_client.send_text_to_murf(response.content)
+        await state["websocket"].send_text(json.dumps({
+            'type': 'script',
+            'content': response.content
+        }))
         await tts_client.close_tts_connection()
         tts_client = None
         # Clear stale messages from the text queue

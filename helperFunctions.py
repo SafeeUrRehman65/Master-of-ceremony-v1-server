@@ -47,7 +47,8 @@ async def receive_from_websocket(websocket: WebSocket, audio_queue: ThreadQueue,
 
                                 data_phase = data["phase"]
                                 if data_phase == "initiate":
-                                    asyncio.create_task(run_ceremony_agent(websocket, text_queue, audio_queue, stop_event))
+                                    speaker = data["speaker"]
+                                    asyncio.create_task(run_ceremony_agent(websocket, text_queue, audio_queue, stop_event, speaker))
                                     
                             else:
                                 print("putting data in text queue!")
@@ -72,7 +73,7 @@ async def receive_from_websocket(websocket: WebSocket, audio_queue: ThreadQueue,
         stop_event.set()
 
 
-async def run_ceremony_agent (websocket, text_queue, audio_queue, stop_event):
+async def run_ceremony_agent (websocket, text_queue, audio_queue, stop_event, speaker):
     """Run agent without affecting main receiver"""
 
     state = {
@@ -81,9 +82,15 @@ async def run_ceremony_agent (websocket, text_queue, audio_queue, stop_event):
             'text_queue': text_queue,
             'audio_queue': audio_queue,
             'stop_event': stop_event,
-            'event_name':" ",
-            'ceremony_histoy': " ",
+            'speaker': speaker,
+            'organized_by': "",
+            'vision':"",
+            'program_approach':"",
+            'unique_selling_points': "",
+            'target_audience': "",
             'theme':" ",
+            'event_name':"",
+            'ceremony_histoy': " ",
             'venue':" ",
             'time':" ",
             'purpose':" ",

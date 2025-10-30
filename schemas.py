@@ -31,12 +31,6 @@ from classes.TTSClient import TTS_Client
 #     speakers_names: List[SpeakerName]
 #     speakers_data: List[SpeakerData]
 
-class Remarks(BaseModel):
-    """Provide remakrs and detects speech"""
-    remarks: str = Field(default = None, description="Acknowledgement and complimentary remakrs based on user's speech")
-
-    is_speech: bool = Field(default = False, description="Boolean flag indicating whether speech is present or not")
-
 
 # initialize state for MoC agent
 class State(TypedDict):
@@ -45,9 +39,15 @@ class State(TypedDict):
     transcriptionClient: Optional[TranscriptionClient]
     event_name:str 
     theme:str
+    organized_by: List
     venue:str
+    speaker: str
     time:str
     purpose:str
+    vision:str
+    program_approach:str
+    unique_selling_points: str
+    target_audience: str
     current_speaker_id: int
     speakers_names: List
     current_speaker_remarks: str
