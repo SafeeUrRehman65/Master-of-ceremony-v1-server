@@ -59,7 +59,7 @@ MURF_AI_API_KEY="<YOUR_MURF_API_KEY>"
 ```
 
 ## Setup Instructions
-1.**Create your own .env file in the project root directory:**
+1. **Create your own .env file in the project root directory:**
 ```bash
 cp .env.example .env
 ```
