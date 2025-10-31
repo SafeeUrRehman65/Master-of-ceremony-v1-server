@@ -20,7 +20,7 @@ It powers the real-time audio processing, WebSocket streaming, and backend API t
 ## 🧭 Features
 
 - Real-time **WebSocket** endpoint for sending/receiving audio data  
-- Threaded queue system for concurrent audio and text processing  
+- Threaded and Asyncio queue system for concurrent audio and text processing  
 - Handles **audio decoding**, **transcription**, and **response streaming**  
 - Designed for scalability and fast response times  
 - Clean, modular structure for future expansion  
@@ -37,13 +37,45 @@ It powers the real-time audio processing, WebSocket streaming, and backend API t
 
 ---
 
-### 1️⃣ Clone the repository
+### Clone the repository
 ```bash
 git clone https://github.com/SafeeUrRehman65/Master-of-ceremony-v1-server.git
 cd Master-of-ceremony-v1-server
 ```
 
-### 2️⃣ Create and activate a virtual environment
+### 🔐 Environment Variables Setup (`.env`)
+
+The backend of **Master of Ceremony v1** requires a few API keys to function properly.  
+These keys enable access to external AI and text-to-speech (TTS) services used for real-time interaction and audio generation.
+
+---
+
+## 📁 Example `.env.example`
+
+```bash
+GROQ_AI_API_KEY="<YOUR_GROQ_API_KEY>"
+FIREWORKS_API_KEY="<YOUR_FIREWORKS_API_KEY>"
+MURF_AI_API_KEY="<YOUR_MURF_API_KEY>"
+```
+
+## Setup Instructions
+1.**Create your own .env file in the project root directory:**
+```bash
+cp .env.example .env
+```
+
+2. **Open .env and replace the placeholder values (<YOUR_...>) with your actual API keys.**
+
+Example:
+```bash
+GROQ_AI_API_KEY="sk_groq_xxxxxxxxxxxxx"
+FIREWORKS_API_KEY="fwk_xxxxxxxxxxxxx"
+MURF_AI_API_KEY="murf_xxxxxxxxxxxxx"
+```
+
+3. **Save the file — the app will automatically load these values using python-dotenv.**
+
+### Create and activate a virtual environment
 ```bash
 python -m venv venv
 # On Windows
@@ -52,7 +84,7 @@ venv\Scripts\activate
 source venv/bin/activate
 ```
 
-### 3️⃣ Install dependencies
+### Install dependencies
 ```bash
 pip install -r requirements.txt
 ```
@@ -61,8 +93,8 @@ pip install -r requirements.txt
 ```bash
 uvicorn main:app --reload --port 8080
 ```
-Server will start on:
-👉 http://127.0.0.1:8080
+    Server will start on:
+    👉 http://127.0.0.1:8080
 
 If 8080 is already in use, change the port:
 ```bash
